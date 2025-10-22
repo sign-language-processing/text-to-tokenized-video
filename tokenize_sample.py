@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 Tokenize PHOENIX PNG frames with NVIDIA Cosmos Tokenizer
 Cluster-safe version (no GUI) – runs both CV8x8x8 and DV8x16x16.
@@ -171,3 +172,5 @@ for model_name in model_names:
         metrics=metrics,
         notes="Baseline run with RGB-fix",
     )
+
+

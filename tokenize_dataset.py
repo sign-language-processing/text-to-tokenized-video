@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Tokenize the full PHOENIX-2014-T dataset with NVIDIA Cosmos Tokenizers.
+new Tokenize the full PHOENIX-2014-T dataset with NVIDIA Cosmos Discrete Tokenizer (DV8x16x16).
 Saves discrete token IDs (z_indices) for each sequence.
 Preprocessing: crops inputs (T,H,W) to multiples of 16.
 """
@@ -25,17 +25,14 @@ OUT_DIR = "/data/mpanag/thesis_storage/tokens"
 
 os.makedirs(OUT_DIR, exist_ok=True)
 
-model_names = [
-    "Cosmos-1.0-Tokenizer-CV8x8x8",
-    "Cosmos-1.0-Tokenizer-DV8x16x16",
-]
+# Use only the discrete tokenizer
+MODEL_NAME = "Cosmos-1.0-Tokenizer-DV8x16x16"
 
 # Ensure checkpoints exist
-for model_name in model_names:
-    ckpt_dir = f"checkpoints/{model_name}"
-    if not os.path.exists(ckpt_dir):
-        print(f"Downloading {model_name}...")
-        snapshot_download(repo_id=f"nvidia/{model_name}", local_dir=ckpt_dir)
+ckpt_dir = f"checkpoints/{MODEL_NAME}"
+if not os.path.exists(ckpt_dir):
+    print(f"Downloading {MODEL_NAME}...")
+    snapshot_download(repo_id=f"nvidia/{MODEL_NAME}", local_dir=ckpt_dir)
 
 # -----------------------------
 # Utils
@@ -75,6 +72,16 @@ def process_split(split: str, corpus_file: str, limit: int = None):
 
     results = []
 
+    # Initialize tokenizer once per split
+    encoder_ckpt = f"checkpoints/{MODEL_NAME}/encoder.jit"
+    decoder_ckpt = f"checkpoints/{MODEL_NAME}/decoder.jit"
+    tokenizer = CausalVideoTokenizer(
+        checkpoint_enc=encoder_ckpt,
+        checkpoint_dec=decoder_ckpt,
+        device="cuda",
+        dtype="bfloat16",
+    )
+
     for _, row in df.iterrows():
         seq_id = row["name"]
         gloss = row.get("orth", None)
@@ -91,48 +98,38 @@ def process_split(split: str, corpus_file: str, limit: int = None):
         video_torch = crop_to_multiple(video_torch, mult=16)
         video_torch = video_torch.to("cuda", dtype=torch.bfloat16)
 
-        for model_name in model_names:
-            encoder_ckpt = f"checkpoints/{model_name}/encoder.jit"
-            decoder_ckpt = f"checkpoints/{model_name}/decoder.jit"
+        # Run tokenizer
+        t0 = time.time()
+        out = tokenizer.encode(video_torch)
 
-            tokenizer = CausalVideoTokenizer(
-                checkpoint_enc=encoder_ckpt,
-                checkpoint_dec=decoder_ckpt,
-                device="cuda",
-                dtype="bfloat16",
-            )
+        # Cosmos returns (z_indices, latents). Keep z_indices only.
+        if isinstance(out, tuple):
+            tokens = out[0]
+        else:
+            tokens = out
 
-            t0 = time.time()
-            out = tokenizer.encode(video_torch)
+        tokens = tokens.int().cpu()
+        runtime_sec = time.time() - t0
 
-            # Cosmos returns (z_indices, latents). Keep z_indices only.
-            if isinstance(out, tuple):
-                tokens = out[0]
-            else:
-                tokens = out
+        # Save tokens
+        token_outdir = os.path.join(OUT_DIR, split, MODEL_NAME)
+        os.makedirs(token_outdir, exist_ok=True)
+        token_path = os.path.join(token_outdir, f"{seq_id}.pt")
+        torch.save(tokens, token_path)
 
-            tokens = tokens.int().cpu()
-            runtime_sec = time.time() - t0
-
-            # Save tokens
-            token_outdir = os.path.join(OUT_DIR, split, model_name)
-            os.makedirs(token_outdir, exist_ok=True)
-            token_path = os.path.join(token_outdir, f"{seq_id}.pt")
-            torch.save(tokens, token_path)
-
-            results.append({
-                "split": split,
-                "seq_id": seq_id,
-                "gloss": gloss,
-                "text": text,
-                "model": model_name,
-                "n_frames": input_video.shape[0],
-                "height": input_video.shape[1],
-                "width": input_video.shape[2],
-                "preprocessing": "crop_to_multiple(16)",
-                "token_path": token_path,
-                "runtime_sec": runtime_sec,
-            })
+        results.append({
+            "split": split,
+            "seq_id": seq_id,
+            "gloss": gloss,
+            "text": text,
+            "model": MODEL_NAME,
+            "n_frames": input_video.shape[0],
+            "height": input_video.shape[1],
+            "width": input_video.shape[2],
+            "preprocessing": "crop_to_multiple(16)",
+            "token_path": token_path,
+            "runtime_sec": runtime_sec,
+        })
 
     out_csv = os.path.join(OUT_DIR, f"tokens_{split}.csv")
     pd.DataFrame(results).to_csv(out_csv, index=False)

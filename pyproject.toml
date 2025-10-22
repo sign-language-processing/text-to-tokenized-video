@@ -8,6 +8,7 @@ authors = [
 ]
 readme = "README.md"
 dependencies = [
+    "cosmos_predict1 @ git+https://github.com/nvidia-cosmos/cosmos-predict1.git",
 ]
 
 [project.optional-dependencies]

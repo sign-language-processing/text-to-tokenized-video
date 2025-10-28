@@ -8,9 +8,9 @@ authors = [
 ]
 readme = "README.md"
 dependencies = [
+    "numpy",
     "mediapy",
     "torch",
-    "torchvideo",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +45,7 @@ select = [
 [tool.setuptools]
 packages = [
     "text_to_tokenized_video",
+    "text_to_tokenized_video.tokenizer",
 ]
 
 [tool.pytest.ini_options]

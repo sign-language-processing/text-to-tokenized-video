@@ -32,11 +32,17 @@ def load_tokenizer(checkpoint_enc: Path = None, checkpoint_dec: Path = None, dev
         device=device,
     )
 
-def resize_videos(videos):
+def resize_videos(videos, target_height=128, target_width=128):
+    """Resize videos to target resolution, ensuring dimensions are divisible by 16."""
     B, T, H, W, C = videos.shape
+
+    # Round to nearest multiple of 16
+    target_height = (target_height // 16) * 16
+    target_width = (target_width // 16) * 16
+
     videos = videos.view(B * T, H, W, C).permute(0, 3, 1, 2)  # [B*T, C, H, W]
-    videos = F.interpolate(videos, size=(128, 128), mode="bilinear", align_corners=False)
-    return videos.permute(0, 2, 3, 1).view(B, T, 128, 128, C)
+    videos = F.interpolate(videos, size=(target_height, target_width), mode="bilinear", align_corners=False)
+    return videos.permute(0, 2, 3, 1).view(B, T, target_height, target_width, C)
 
 
 @torch.no_grad()
@@ -44,12 +50,15 @@ def encode_video(video, checkpoint_enc, device=None):
     video_np = read_video(video)[..., :3] # (T, H, W, 3)
     video_tensor = torch.from_numpy(video_np)
 
-    # Add batch dimension
+    # Add batch dimension: (1, T, H, W, 3)
     video_tensor = video_tensor.unsqueeze(0)
     video_tensor = resize_videos(video_tensor)
 
     # Normalize tensor
     video_tensor = video_tensor.to(torch.float) / 127.5 - 1
+
+    # Rearrange to Bx3xTxHxW layout expected by tokenizer
+    video_tensor = video_tensor.permute(0, 4, 1, 2, 3)  # (B, C, T, H, W)
 
     tokenizer = load_tokenizer(checkpoint_enc=checkpoint_enc, device=device)
     return tokenizer.encode(video_tensor)  # returns tokens

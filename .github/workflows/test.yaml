@@ -20,7 +20,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Requirements
-        run: pip install .[dev]
+        run: make install
 
       - name: Test Code
         run: pytest .

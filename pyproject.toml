@@ -8,12 +8,19 @@ authors = [
 ]
 readme = "README.md"
 dependencies = [
+    "mediapy",
+    "torch",
+    "torchvideo",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
     "ruff",
+]
+cosmos = [
+    "loguru",
+    "einops",
 ]
 
 [tool.ruff]

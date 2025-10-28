@@ -3,3 +3,26 @@ build/
 text_to_tokenized_video.egg-info/
 **/__pycache__/
 .env
+# 1. LARGE DATA & DERIVED OUTPUTS (The things you can't upload)
+/data/mpanag/thesis_storage/
+/tokens/
+/*.csv
+/*.pt
+/*.mp4
+/reconstructions/
+
+# 2. CHECKPOINTS (NVIDIA Models)
+# The full models must be excluded. Only instructions to download them are allowed.
+/checkpoints/
+/checkpoints_posttrained/
+
+# 3. ENVIRONMENT & LOGS
+/cosmos_output/
+*.log
+*.err
+*.out
+__pycache__/
+.DS_Store
+*.ipynb_checkpoints
+/conda_envs/
+/venv/

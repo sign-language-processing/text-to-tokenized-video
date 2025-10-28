@@ -19,6 +19,7 @@ import torch
 from huggingface_hub import snapshot_download
 from cosmos_predict1.tokenizer.inference.video_lib import CausalVideoTokenizer
 
+
 # -----------------------------
 # CUDA settings
 # -----------------------------

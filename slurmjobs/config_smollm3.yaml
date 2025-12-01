@@ -1,4 +1,7 @@
 # AutoTrain config for SmolLM2 Sign Language fine-tuning (Round 2 - Extended)
+# NOTE: autotrain saves the model to a folder named after 'project_name' in the current working directory.
+# The SLURM script (train_smollm.slurm) changes to the checkpoints directory before running autotrain,
+# so the model will be saved to: {checkpoints_dir}/{project_name}/
 
 task: llm-sft
 base_model: HuggingFaceTB/SmolLM2-135M-Instruct

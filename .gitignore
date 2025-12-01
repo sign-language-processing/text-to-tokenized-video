@@ -1,9 +1,26 @@
+# ========== IDE & PYTHON CACHE ==========
 .idea/
+**/__pycache__/
+*.ipynb_checkpoints
+.DS_Store
+
+# ========== PYTHON ENVIRONMENTS ==========
+.env
+/venv/
+/conda_envs/
+
+# ========== BUILD ARTIFACTS ==========
 build/
 text_to_tokenized_video.egg-info/
-**/__pycache__/
-.env
-# 1. LARGE DATA & DERIVED OUTPUTS (The things you can't upload)
+
+# ========== LOGS & OUTPUT FILES ==========
+*.log
+*.err
+*.out
+/cosmos_output/
+
+# ========== LARGE DATA & DERIVED OUTPUTS ==========
+/data/
 /data/mpanag/thesis_storage/
 /tokens/
 /*.csv
@@ -11,18 +28,10 @@ text_to_tokenized_video.egg-info/
 /*.mp4
 /reconstructions/
 
-# 2. CHECKPOINTS (NVIDIA Models)
-# The full models must be excluded. Only instructions to download them are allowed.
+# ========== CHECKPOINTS ==========
 /checkpoints/
 /checkpoints_posttrained/
+/cli/checkpoints/
 
-# 3. ENVIRONMENT & LOGS
-/cosmos_output/
-*.log
-*.err
-*.out
-__pycache__/
-.DS_Store
-*.ipynb_checkpoints
-/conda_envs/
-/venv/
+# ========== GENERAL ==========
+*.egg

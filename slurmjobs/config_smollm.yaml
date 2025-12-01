@@ -1,0 +1,42 @@
+# AutoTrain config for SmolLM2 Sign Language fine-tuning
+
+task: llm-sft
+base_model: HuggingFaceTB/SmolLM2-135M-Instruct
+project_name: smollm2-signlang
+log: tensorboard
+backend: local
+
+data:
+  path: /home/mpanag/data/hf_sign_dataset
+  train_split: train
+  valid_split: validation
+  chat_template: tokenizer
+  column_mapping:
+    text_column: messages
+
+params:
+  block_size: 1024
+  model_max_length: 2048
+  epochs: 3
+  batch_size: 2
+  lr: 1e-4
+  peft: true
+  quantization: int4
+  target_modules: all-linear
+  padding: right
+  optimizer: paged_adamw_8bit
+  scheduler: cosine
+  gradient_accumulation: 8
+  mixed_precision: bf16
+  merge_adapter: true
+  use_flash_attention_2: false
+  eval_strategy: epoch
+  add_eos_token: true
+  save_total_limit: 1
+  max_grad_norm: 1.0
+  seed: 42
+
+hub:
+  username: marpng
+  #token:
+  push_to_hub: false

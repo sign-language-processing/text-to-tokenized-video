@@ -1,0 +1,48 @@
+# AutoTrain config for SmolLM2 Sign Language fine-tuning (Round 2 - Extended)
+
+task: llm-sft
+base_model: HuggingFaceTB/SmolLM2-135M-Instruct
+project_name: smollm2-signlang-v3
+log: tensorboard
+backend: local
+
+data:
+  path: /data/mpanag/hf_sign_dataset
+  train_split: train
+  valid_split: validation
+  chat_template: tokenizer
+  column_mapping:
+    text_column: messages
+
+params:
+  output_dir: /home/mpanag/thesis/text-to-tokenized-video/checkpoints/smollm2-signlang-v3
+  save_strategy: epoch
+  resume_from_checkpoint: null
+  block_size: 1024
+  model_max_length: 2048
+  epochs: 5                   # ↑ from 3 → 5 to extend convergence
+  batch_size: 2
+  lr: 3e-4                    # ↑ from 1e-4 → 2e-4 for a stronger early gradient signal
+  peft: true
+  quantization: int4
+  target_modules: all-linear
+  padding: right
+  optimizer: paged_adamw_8bit
+  scheduler: linear
+  gradient_accumulation: 4    # ↓ from 8 → 4 to apply gradients twice as often
+  mixed_precision: bf16
+  merge_adapter: true
+  use_flash_attention_2: false
+  eval_strategy: epoch
+  add_eos_token: true
+  save_total_limit: 2         # keep 2 checkpoints now that training is longer
+  weight_decay: 0.01          # small regularization to reduce overfitting risk
+  max_grad_norm: 1.0
+  seed: 42
+  report_to: wandb
+  wandb_project: smollm-signlang
+
+hub:
+  username: marpng
+  #token:
+  push_to_hub: false

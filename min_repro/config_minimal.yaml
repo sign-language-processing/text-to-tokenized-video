@@ -1,0 +1,23 @@
+task: llm-sft
+base_model: HuggingFaceTB/SmolLM2-135M-Instruct
+project_name: test-repro
+log: tensorboard
+backend: local
+
+data:
+  path: autotrain-data
+  train_split: train
+  valid_split: null
+  column_mapping:
+    text_column: text
+
+params:
+  epochs: 1
+  block_size: 128
+  batch_size: 1
+  lr: 1e-4
+  peft: true
+  quantization: int4
+  padding: right
+  mixed_precision: bf16
+  max_grad_norm: 1.0

@@ -1,0 +1,29 @@
+task: llm-sft
+base_model: HuggingFaceTB/SmolLM2-135M-Instruct
+project_name: min-smollm-debug
+log: tensorboard
+backend: local
+
+data:
+  path: autotrain-data
+  train_split: train
+  valid_split: null
+  chat_template: null
+  column_mapping:
+    text: text
+
+params:
+  epochs: 1
+  batch_size: 2
+  lr: 1e-4
+  block_size: 256
+  model_max_length: 512
+  mixed_precision: bf16
+  peft: true
+  quantization: int4
+  target_modules: all-linear
+  gradient_accumulation: 2
+  save_total_limit: 1
+  eval_strategy: epoch
+  add_eos_token: true
+  seed: 42

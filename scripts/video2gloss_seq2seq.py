@@ -1,10 +1,3 @@
-"""
-Seq2Seq Transformer for translating tokenized video to gloss sequences.
-
-This script pads all video-token sequences to a consistent shape (T, C, H, W),
-normalizes the data, and trains a Transformer-based seq2seq model.
-"""
-
 import os
 import torch
 from torch import nn
@@ -14,14 +7,12 @@ import pandas as pd
 class VideoToken2GlossDataset(Dataset):
     def __init__(self, csv_path, pt_dir, vocab=None,
                  max_video_len=256, max_gloss_len=64,
-                 target_channels=60, target_H=8, target_W=8):
+                 target_channels=60):
         self.df = pd.read_csv(csv_path, sep="|")
         self.pt_dir = pt_dir
         self.max_video_len = max_video_len
         self.max_gloss_len = max_gloss_len
         self.target_channels = target_channels
-        self.target_H = target_H
-        self.target_W = target_W
 
         if vocab is None:
             all_glosses = set()
@@ -43,36 +34,31 @@ class VideoToken2GlossDataset(Dataset):
     def __len__(self):
         return len(self.df)
 
-    def pad_channels(self, frame: torch.Tensor):
-        C, H, W = frame.shape
+    def pad_channels(self, tensor):
+        T, H, W, C = tensor.shape
         if C < self.target_channels:
-            pad_c = torch.zeros((self.target_channels - C, H, W), dtype=frame.dtype)
-            frame = torch.cat([frame, pad_c], dim=0)
+            pad = torch.zeros((T, H, W, self.target_channels - C), dtype=tensor.dtype)
+            tensor = torch.cat([tensor, pad], dim=-1)
         else:
-            frame = frame[:self.target_channels]
-        return frame
+            tensor = tensor[..., :self.target_channels]
+        return tensor
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
         name = row["name"]
-        token_path = os.path.join(self.pt_dir, f"{name}.pt")
-        video_tokens = torch.load(token_path, map_location="cpu")
-        if isinstance(video_tokens, tuple):
-            video_tokens = video_tokens[0]
-
-        tokens = video_tokens[: self.max_video_len]
-        T = tokens.shape[0]
-
-        frames = [self.pad_channels(tokens[i]) for i in range(T)]
-        frames = torch.stack(frames, dim=0)
-
+        path = os.path.join(self.pt_dir, f"{name}.pt")
+        tensor = torch.load(path, map_location="cpu")
+        if isinstance(tensor, tuple):
+            tensor = tensor[0]
+        tensor = tensor.squeeze(0)
+        tensor = self.pad_channels(tensor)
+        T = min(tensor.shape[0], self.max_video_len)
+        tensor = tensor[:T]
         if T < self.max_video_len:
-            pad_frames = torch.zeros((self.max_video_len - T,
-                                      self.target_channels,
-                                      self.target_H,
-                                      self.target_W),
-                                     dtype=frames.dtype)
-            frames = torch.cat([frames, pad_frames], dim=0)
+            pad = torch.zeros((self.max_video_len - T, *tensor.shape[1:]))
+            tensor = torch.cat([tensor, pad], dim=0)
+
+        tensor = tensor.reshape(self.max_video_len, -1)
 
         gloss = row["orth"].split()
         gloss = gloss[: self.max_gloss_len - 2]
@@ -84,7 +70,7 @@ class VideoToken2GlossDataset(Dataset):
             target_ids = target_ids[: self.max_gloss_len]
 
         return {
-            "video_tokens": frames.float(),
+            "video_tokens": tensor.float(),
             "target_ids": torch.tensor(target_ids, dtype=torch.long)
         }
 
@@ -97,82 +83,66 @@ class Seq2SeqVideoToGloss(nn.Module):
     def __init__(self, token_dim, vocab_size, hidden_dim=512, num_layers=4, nhead=8, dropout=0.1):
         super().__init__()
         self.encoder_proj = nn.Linear(token_dim, hidden_dim)
-        enc_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=nhead,
-                                               dropout=dropout, batch_first=True)
+        enc_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=nhead, dropout=dropout, batch_first=True)
         self.encoder = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
-
         self.embed = nn.Embedding(vocab_size, hidden_dim)
-        dec_layer = nn.TransformerDecoderLayer(d_model=hidden_dim, nhead=nhead,
-                                               dropout=dropout, batch_first=True)
+        dec_layer = nn.TransformerDecoderLayer(d_model=hidden_dim, nhead=nhead, dropout=dropout, batch_first=True)
         self.decoder = nn.TransformerDecoder(dec_layer, num_layers=num_layers)
-
         self.classifier = nn.Linear(hidden_dim, vocab_size)
 
-    def forward(self, video_tokens, target_ids=None):
-        x = video_tokens  # B, T, C*H*W
-        enc = self.encoder_proj(x)
-        memory = self.encoder(enc)
-
-        if target_ids is not None:
-            tgt_in = target_ids[:, :-1]
-            tgt_embed = self.embed(tgt_in)
-            output = self.decoder(tgt_embed, memory)
-            logits = self.classifier(output)
-            return logits
-        else:
-            raise NotImplementedError("Inference decoding not implemented.")
+    def forward(self, video_tokens, target_ids):
+        memory = self.encoder(self.encoder_proj(video_tokens))
+        tgt_in = target_ids[:, :-1]
+        tgt_embed = self.embed(tgt_in)
+        output = self.decoder(tgt_embed, memory)
+        return self.classifier(output)
 
 def train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     csv_path = os.path.expanduser("~/scratch/PHOENIX-2014-T-release-v3/PHOENIX-2014-T/annotations/manual/PHOENIX-2014-T.train.corpus.csv")
-    pt_dir = os.path.expanduser("~/data/thesis_storage/tokens/train")
+    pt_dir = os.path.expanduser("~/data/thesis_storage/latentfeatures/train")
 
-    dataset = VideoToken2GlossDataset(csv_path, pt_dir,
-                                      target_channels=60,
-                                      target_H=8, target_W=8)
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True,
-                            collate_fn=collate_fn, num_workers=2)
+    dataset = VideoToken2GlossDataset(csv_path, pt_dir, target_channels=60)
+    dataloader = DataLoader(dataset, batch_size=4, shuffle=True, collate_fn=collate_fn, num_workers=2)
 
-    sample = next(iter(dataloader))
-    B, T, C, H, W = sample["video_tokens"].shape
-    token_dim = C * H * W
-
+    token_dim = dataset[0]["video_tokens"].shape[-1]
     vocab_size = len(dataset.vocab)
     model = Seq2SeqVideoToGloss(token_dim, vocab_size).to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5)
     loss_fn = nn.CrossEntropyLoss(ignore_index=dataset.vocab["<pad>"])
 
-    for epoch in range(10):
+    for epoch in range(50):
         model.train()
-        total_loss = 0.0
-        for batch in dataloader:
+        total_loss = 0
+        for i, batch in enumerate(dataloader):
             vt = batch["video_tokens"].to(device)
-            vt = vt.view(vt.size(0), vt.size(1), -1)
-            vt = vt / 127.5 - 1  # Normalize
-
             tgt = batch["target_ids"].to(device)
             logits = model(vt, tgt)
-            logits = logits.view(-1, vocab_size)
-            labels = tgt[:, 1:].reshape(-1)
-            loss = loss_fn(logits, labels)
+            loss = loss_fn(logits.view(-1, vocab_size), tgt[:, 1:].reshape(-1))
 
             if torch.isnan(loss):
-                print("❌ NaN loss encountered. Skipping batch.")
+                print("NaN loss encountered. Skipping batch.")
                 continue
 
             optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             total_loss += loss.item()
 
-        print(f"Epoch {epoch+1}/10 — loss: {total_loss/len(dataloader):.6f}")
+        avg_loss = total_loss / len(dataloader)
+        print(f"Epoch {epoch+1}/50 — Loss: {avg_loss:.4f}")
 
-    torch.save({"model_state_dict": model.state_dict(),
-                "vocab": dataset.vocab},
-               "video2gloss_seq2seq.pt")
-    print("✅ Model saved to video2gloss_seq2seq.pt")
+        # Save every 10 epochs
+        if (epoch + 1) % 10 == 0:
+            ckpt_path = f"video2gloss_seq2seq_cosmos_epoch{epoch+1}.pt"
+            torch.save({"model_state_dict": model.state_dict(), "vocab": dataset.vocab}, ckpt_path)
+            print(f"✅ Saved checkpoint: {ckpt_path}")
+
+    # Save final model
+    torch.save({"model_state_dict": model.state_dict(), "vocab": dataset.vocab}, "video2gloss_seq2seq_cosmos.pt")
+    print("✅ Final model saved to video2gloss_seq2seq_cosmos.pt")
 
 if __name__ == "__main__":
     train()

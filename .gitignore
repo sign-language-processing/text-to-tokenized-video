@@ -1,0 +1,87 @@
+# ========== IDE & SYSTEM ==========
+.idea/
+.vscode/
+**/__pycache__/
+*.ipynb_checkpoints/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# ========== PYTHON ENVIRONMENTS ==========
+.env
+.venv/
+venv/
+conda_envs/
+*.egg-info/
+
+# ========== BUILD ARTIFACTS ==========
+build/
+dist/
+*.egg
+
+# ========== LOGS & OUTPUT FILES ==========
+*.log
+*.err
+*.out
+/logs/
+/cli/logs/
+wandb/
+scripts/wandb/
+
+# ========== LARGE DATA & DERIVED OUTPUTS ==========
+/data/
+/tokens/
+/reconstructions/
+*.csv
+*.pt
+*.mp4
+train.jsonl
+validation.jsonl
+scripts/output/
+scripts/png/
+scripts/video_frames_*/
+scripts/*.mp4
+scripts/gloss2video/*.jsonl
+scripts/video2gloss/*.jsonl
+scripts/video2gloss/vocab.json
+scripts/video2text/*.jsonl
+scripts/gloss2text/*.json
+scripts/video2text/video2text_model/
+
+# ========== CHECKPOINTS & MODEL FILES ==========
+/checkpoints/
+/checkpoints_posttrained/
+/cli/checkpoints/
+*.safetensors
+*.bin
+*.ckpt
+
+# ========== HUGGINGFACE CACHE ==========
+/hf_cache/
+.cache/
+
+# ========== TEMPORARY & EXPERIMENTAL ==========
+/tmp/
+/min_repro/
+/originals/
+/example/
+/examples/
+/thesis/
+/thesis_final/
+/core
+/txt/
+*.txt
+
+# ========== THESIS PDF ==========
+*.pdf
+
+# ========== SLURM MODEL OUTPUTS ==========
+slurmjobs/smollm2-signlang*/
+!slurmjobs/*.yaml
+!slurmjobs/*.slurm
+
+# ========== CLONED DEPENDENCIES ==========
+cosmos-predict1/
+scripts/transformers/
+scripts/models/

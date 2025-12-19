@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
-import torch
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import torch
 
 # Add cosmos_predict1 to path
 project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root / "cosmos-predict1"))
 
-from cosmos_predict1.tokenizer.inference.video_lib import CausalVideoTokenizer
 import mediapy as media
+from cosmos_predict1.tokenizer.inference.video_lib import CausalVideoTokenizer
 
 # === CONFIG ===
 PRED_PATH = "/home/mpanag/scratch/thesis_storage/text2video_t5small_100epoch/predictions_named/20September_2010_Monday_heute-2939.pt"

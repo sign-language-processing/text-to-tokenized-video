@@ -1,11 +1,11 @@
 import json
-import random
+
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
-from tqdm import tqdm
 import wandb
+from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
 # === CONFIG ===
 DATA_PATH = "video_to_gloss_dataset.jsonl"
@@ -19,29 +19,28 @@ EMBED_SIZE = 128
 PROJECT_NAME = "video2gloss"
 
 # === INIT WANDB ===
-wandb.init(project=PROJECT_NAME, config={
-    "batch_size": BATCH_SIZE,
-    "hidden_size": HIDDEN_SIZE,
-    "embed_size": EMBED_SIZE,
-    "patience": PATIENCE,
-    "device": str(DEVICE)
-})
+wandb.init(
+    project=PROJECT_NAME,
+    config={
+        "batch_size": BATCH_SIZE,
+        "hidden_size": HIDDEN_SIZE,
+        "embed_size": EMBED_SIZE,
+        "patience": PATIENCE,
+        "device": str(DEVICE),
+    },
+)
+
 
 # === DATASET ===
 class GlossDataset(Dataset):
     def __init__(self, path, vocab=None):
-        with open(path, 'r') as f:
+        with open(path) as f:
             self.data = [json.loads(line) for line in f]
 
         glosses = [g for d in self.data for g in d["target_glosses"]]
 
         if vocab is None:
-            self.vocab = {
-                "<PAD>": 0,
-                "<SOS>": 1,
-                "<EOS>": 2,
-                "<UNK>": 3
-            }
+            self.vocab = {"<PAD>": 0, "<SOS>": 1, "<EOS>": 2, "<UNK>": 3}
             for g in sorted(set(glosses)):
                 self.vocab[g] = len(self.vocab)
         else:
@@ -59,11 +58,13 @@ class GlossDataset(Dataset):
         y = torch.tensor([self.vocab.get(g, self.vocab["<UNK>"]) for g in gloss], dtype=torch.long)
         return x, y
 
+
 def collate_fn(batch):
     x_batch, y_batch = zip(*batch)
     x_padded = nn.utils.rnn.pad_sequence(x_batch, batch_first=True)
     y_padded = nn.utils.rnn.pad_sequence(y_batch, batch_first=True, padding_value=0)
     return x_padded, y_padded
+
 
 # === MODEL ===
 class VideoToGloss(nn.Module):
@@ -82,6 +83,7 @@ class VideoToGloss(nn.Module):
         out, _ = self.decoder(y_embed, (h, c))
         logits = self.output(out)
         return logits
+
 
 # === BLEU EVALUATION ===
 def compute_bleu(model, dataset, num_samples=20):
@@ -117,6 +119,7 @@ def compute_bleu(model, dataset, num_samples=20):
 
     return sum(scores) / len(scores)
 
+
 # === TRAINING ===
 def train():
     train_data = GlossDataset(DATA_PATH)
@@ -125,10 +128,7 @@ def train():
     train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
     model = VideoToGloss(
-        input_dim=384,
-        embed_size=EMBED_SIZE,
-        hidden_size=HIDDEN_SIZE,
-        vocab_size=len(train_data.vocab)
+        input_dim=384, embed_size=EMBED_SIZE, hidden_size=HIDDEN_SIZE, vocab_size=len(train_data.vocab)
     ).to(DEVICE)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -146,10 +146,7 @@ def train():
             x, y = x.to(DEVICE), y.to(DEVICE)
             logits = model(x, y)
 
-            loss = criterion(
-                logits.reshape(-1, logits.size(-1)),
-                y[:, 1:].reshape(-1)
-            )
+            loss = criterion(logits.reshape(-1, logits.size(-1)), y[:, 1:].reshape(-1))
 
             optimizer.zero_grad()
             loss.backward()
@@ -160,14 +157,10 @@ def train():
         avg_loss = total_loss / len(train_loader)
         bleu = compute_bleu(model, val_data)
 
-        wandb.log({
-            "epoch": epoch,
-            "loss": avg_loss,
-            "bleu": bleu
-        })
+        wandb.log({"epoch": epoch, "loss": avg_loss, "bleu": bleu})
 
-        print(f"\nEpoch {epoch+1} Loss: {avg_loss:.4f}")
-        print(f"BLEU after epoch {epoch+1}: {bleu:.4f}")
+        print(f"\nEpoch {epoch + 1} Loss: {avg_loss:.4f}")
+        print(f"BLEU after epoch {epoch + 1}: {bleu:.4f}")
 
         if bleu > best_bleu:
             best_bleu = bleu
@@ -189,6 +182,7 @@ def train():
 
     print("Training completed.")
     wandb.finish()
+
 
 if __name__ == "__main__":
     train()

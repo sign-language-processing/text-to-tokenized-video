@@ -1,0 +1,47 @@
+[project]
+name = "text-to-tokenized-video"
+description = "Translate from spoken language text into tokenized Sign Language video."
+version = "0.0.1"
+authors = [
+    { name = "Maritina Panagiotopoulou", email = "mariachristina.panagiotopoulou@uzh.ch" },
+    { name = "Amit Moryossef", email = "amitmoryossef@gmail.com" }
+]
+readme = "README.md"
+dependencies = [
+    "cosmos_predict1 @ git+https://github.com/nvidia-cosmos/cosmos-predict1.git",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "C90", # mccabe complexity
+    "I", # isort
+    "UP", # pyupgrade
+    "B", # flake8-bugbear
+    "PT", # flake8-pytest-style
+]
+ignore = [
+    "E402", # module level import not at top of file (needed for sys.path manipulation)
+    "E501", # line too long (handled by formatter)
+    "B905", # zip() without strict= (Python 3.10+ only)
+]
+
+[tool.setuptools]
+packages = [
+    "text_to_tokenized_video",
+]
+
+[tool.pytest.ini_options]
+addopts = "-v"
+testpaths = ["text_to_tokenized_video"]

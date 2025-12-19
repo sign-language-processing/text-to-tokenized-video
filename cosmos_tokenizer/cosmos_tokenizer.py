@@ -9,29 +9,27 @@ https://github.com/NVIDIA/Cosmos-Tokenizer
 """
 
 import sys
-from pathlib import Path
 from functools import cache
+from pathlib import Path
 
 # Ensure the cosmos_predict1 directory is on the Python path
 project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root / "cosmos-predict1"))
 
+import mediapy
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-import mediapy
 from cosmos_predict1.tokenizer.inference.video_lib import CausalVideoTokenizer
-
 
 # =============================================================================
 # Tokenizer Loading
 # =============================================================================
 
+
 @cache
 def load_tokenizer(
-    checkpoint_enc: Path = None,
-    checkpoint_dec: Path = None,
-    device: str = None
+    checkpoint_enc: Path = None, checkpoint_dec: Path = None, device: str = None
 ) -> CausalVideoTokenizer:
     """
     Load the Cosmos CausalVideoTokenizer with encoder and/or decoder checkpoints.
@@ -58,6 +56,7 @@ def load_tokenizer(
 # Video I/O Utilities
 # =============================================================================
 
+
 def read_video(path: Path) -> np.ndarray:
     """
     Read video frames from a file or directory of PNG images.
@@ -78,11 +77,7 @@ def read_video(path: Path) -> np.ndarray:
     return mediapy.read_video(str(path))
 
 
-def resize_video(
-    video: torch.Tensor,
-    target_height: int = 128,
-    target_width: int = 128
-) -> torch.Tensor:
+def resize_video(video: torch.Tensor, target_height: int = 128, target_width: int = 128) -> torch.Tensor:
     """
     Resize video to target resolution, ensuring dimensions are divisible by 16.
 
@@ -112,13 +107,10 @@ def resize_video(
 # Encoding: Video -> Discrete Tokens
 # =============================================================================
 
+
 @torch.no_grad()
 def encode(
-    video_path: Path,
-    checkpoint_enc: Path,
-    device: str = None,
-    target_height: int = 128,
-    target_width: int = 128
+    video_path: Path, checkpoint_enc: Path, device: str = None, target_height: int = 128, target_width: int = 128
 ) -> tuple:
     """
     Encode a video file to discrete FSQ tokens.
@@ -159,13 +151,9 @@ def encode(
 # Decoding: Discrete Tokens -> Video
 # =============================================================================
 
+
 @torch.no_grad()
-def decode(
-    tokens_path: Path,
-    checkpoint_dec: Path,
-    checkpoint_enc: Path = None,
-    device: str = None
-) -> np.ndarray:
+def decode(tokens_path: Path, checkpoint_dec: Path, checkpoint_enc: Path = None, device: str = None) -> np.ndarray:
     """
     Decode discrete tokens back to video frames.
 
@@ -190,11 +178,7 @@ def decode(
     else:
         raise RuntimeError(f"Unexpected tokens file structure: {type(data)}")
 
-    tokenizer = load_tokenizer(
-        checkpoint_enc=checkpoint_enc,
-        checkpoint_dec=checkpoint_dec,
-        device=device
-    )
+    tokenizer = load_tokenizer(checkpoint_enc=checkpoint_enc, checkpoint_dec=checkpoint_dec, device=device)
 
     # Decode tokens to video
     video = tokenizer.decode(indices)
@@ -214,6 +198,7 @@ def decode(
 # CLI Interface
 # =============================================================================
 
+
 def main():
     import argparse
 
@@ -227,40 +212,40 @@ Examples:
 
   Decode tokens:
     python cosmos_tokenizer.py decode --tokens tokens.pt --checkpoint-dec decoder.jit --output video.mp4
-        """
+        """,
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Encode subcommand
     encode_parser = subparsers.add_parser("encode", help="Encode video to discrete tokens")
-    encode_parser.add_argument("--video", type=Path, required=True,
-                               help="Path to video file or directory of PNG frames")
-    encode_parser.add_argument("--checkpoint-enc", type=Path, required=True,
-                               help="Path to encoder checkpoint (encoder.jit)")
-    encode_parser.add_argument("--output", type=Path, required=True,
-                               help="Path to save token output (.pt file)")
-    encode_parser.add_argument("--height", type=int, default=128,
-                               help="Target height for resizing (default: 128)")
-    encode_parser.add_argument("--width", type=int, default=128,
-                               help="Target width for resizing (default: 128)")
-    encode_parser.add_argument("--device", type=str, default=None,
-                               help="Device to use (cuda/cpu, auto-detected if not specified)")
+    encode_parser.add_argument(
+        "--video", type=Path, required=True, help="Path to video file or directory of PNG frames"
+    )
+    encode_parser.add_argument(
+        "--checkpoint-enc", type=Path, required=True, help="Path to encoder checkpoint (encoder.jit)"
+    )
+    encode_parser.add_argument("--output", type=Path, required=True, help="Path to save token output (.pt file)")
+    encode_parser.add_argument("--height", type=int, default=128, help="Target height for resizing (default: 128)")
+    encode_parser.add_argument("--width", type=int, default=128, help="Target width for resizing (default: 128)")
+    encode_parser.add_argument(
+        "--device", type=str, default=None, help="Device to use (cuda/cpu, auto-detected if not specified)"
+    )
 
     # Decode subcommand
     decode_parser = subparsers.add_parser("decode", help="Decode tokens back to video")
-    decode_parser.add_argument("--tokens", type=Path, required=True,
-                               help="Path to .pt token file")
-    decode_parser.add_argument("--checkpoint-dec", type=Path, required=True,
-                               help="Path to decoder checkpoint (decoder.jit)")
-    decode_parser.add_argument("--checkpoint-enc", type=Path, default=None,
-                               help="Path to encoder checkpoint (if required)")
-    decode_parser.add_argument("--output", type=Path, required=True,
-                               help="Path to save reconstructed video (.mp4)")
-    decode_parser.add_argument("--fps", type=int, default=25,
-                               help="Frame rate for output video (default: 25)")
-    decode_parser.add_argument("--device", type=str, default=None,
-                               help="Device to use (cuda/cpu, auto-detected if not specified)")
+    decode_parser.add_argument("--tokens", type=Path, required=True, help="Path to .pt token file")
+    decode_parser.add_argument(
+        "--checkpoint-dec", type=Path, required=True, help="Path to decoder checkpoint (decoder.jit)"
+    )
+    decode_parser.add_argument(
+        "--checkpoint-enc", type=Path, default=None, help="Path to encoder checkpoint (if required)"
+    )
+    decode_parser.add_argument("--output", type=Path, required=True, help="Path to save reconstructed video (.mp4)")
+    decode_parser.add_argument("--fps", type=int, default=25, help="Frame rate for output video (default: 25)")
+    decode_parser.add_argument(
+        "--device", type=str, default=None, help="Device to use (cuda/cpu, auto-detected if not specified)"
+    )
 
     args = parser.parse_args()
 

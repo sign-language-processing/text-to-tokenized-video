@@ -7,18 +7,15 @@ Source (en): Gloss sequence (e.g., "WETTER MORGEN REGEN")
 Target (de): German translation (e.g., "Das Wetter morgen wird regnerisch")
 """
 
-import os
-import json
 import csv
-from pathlib import Path
+import json
+import os
 
 # =========================
 # CONFIGURATION
 # =========================
 
-BASE_CSV_DIR = os.path.expanduser(
-    "~/scratch/PHOENIX-2014-T-release-v3/PHOENIX-2014-T/annotations/manual"
-)
+BASE_CSV_DIR = os.path.expanduser("~/scratch/PHOENIX-2014-T-release-v3/PHOENIX-2014-T/annotations/manual")
 
 OUTPUT_DIR = "."
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -42,6 +39,7 @@ SPLITS = {
 # BUILD DATASET
 # =========================
 
+
 def build_dataset(csv_path):
     """
     Read PHOENIX CSV and create gloss -> text translation pairs.
@@ -54,7 +52,7 @@ def build_dataset(csv_path):
     """
     dataset = []
 
-    with open(csv_path, "r", encoding="utf-8") as f:
+    with open(csv_path, encoding="utf-8") as f:
         reader = csv.DictReader(f, delimiter="|")
         for row in reader:
             gloss = row["orth"].strip()
@@ -62,17 +60,19 @@ def build_dataset(csv_path):
 
             entry = {
                 "translation": {
-                    "en": gloss,      # SOURCE = GLOSS
-                    "de": text,       # TARGET = GERMAN TEXT
+                    "en": gloss,  # SOURCE = GLOSS
+                    "de": text,  # TARGET = GERMAN TEXT
                 }
             }
             dataset.append(entry)
 
     return dataset
 
+
 # =========================
 # SAVE JSONL
 # =========================
+
 
 def save_jsonl(data, path):
     """Save dataset as JSONL file."""
@@ -80,6 +80,7 @@ def save_jsonl(data, path):
         for row in data:
             json.dump(row, f, ensure_ascii=False)
             f.write("\n")
+
 
 # =========================
 # MAIN

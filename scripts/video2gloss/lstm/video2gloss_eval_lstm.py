@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import json
+
 import torch
-import torch.nn as nn
-from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
-from torch.utils.data import Dataset, DataLoader
+from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
+from torch.utils.data import DataLoader, Dataset
 from video2gloss_train_lstm import VideoToGloss, collate_fn  # reuse model + collate
 
 # === CONFIG ===
@@ -14,16 +14,17 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_SAMPLES = 634  # how many samples to evaluate
 
 # === LOAD VOCAB ===
-with open(VOCAB_PATH, 'r', encoding='utf-8') as f:
+with open(VOCAB_PATH, encoding="utf-8") as f:
     vocab = json.load(f)
 
 vocab = {w: int(i) for w, i in vocab.items()}
 inv_vocab = {i: w for w, i in vocab.items()}
 
+
 # === LOAD DATASET ===
 class TestGlossDataset(Dataset):
     def __init__(self, path, vocab):
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             self.data = [json.loads(line) for line in f]
         self.vocab = vocab
         self.inv_vocab = {i: w for w, i in vocab.items()}
@@ -37,6 +38,7 @@ class TestGlossDataset(Dataset):
         gloss = ["<SOS>"] + item["target_glosses"] + ["<EOS>"]
         y = torch.tensor([self.vocab.get(g, self.vocab["<UNK>"]) for g in gloss], dtype=torch.long)
         return x, y
+
 
 # === LOAD TEST SET ===
 test_data = TestGlossDataset(TEST_PATH, vocab)
@@ -84,9 +86,9 @@ for i, (x, y) in enumerate(test_loader):
         bleu = sentence_bleu([target], decoded, smoothing_function=smooth)
         bleu_scores.append(bleu)
 
-        print(f"Sample {i+1}")
+        print(f"Sample {i + 1}")
         print(f"Target   : {' '.join(target)}")
         print(f"Predicted: {' '.join(decoded)}")
         print(f"BLEU     : {bleu:.4f}\n")
 
-print(f"\nAverage BLEU on Test Set (n={NUM_SAMPLES}): {sum(bleu_scores)/len(bleu_scores):.4f}")
+print(f"\nAverage BLEU on Test Set (n={NUM_SAMPLES}): {sum(bleu_scores) / len(bleu_scores):.4f}")

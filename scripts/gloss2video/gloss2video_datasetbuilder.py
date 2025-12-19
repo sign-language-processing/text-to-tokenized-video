@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-import os
-import torch
-import json
 import csv
+import json
+import os
+
+import torch
 from tqdm import tqdm
 
 # =========================
@@ -11,9 +12,7 @@ from tqdm import tqdm
 # =========================
 
 BASE_PT_DIR = os.path.expanduser("~/data/thesis_storage/tokens")
-BASE_CSV_DIR = os.path.expanduser(
-    "~/scratch/PHOENIX-2014-T-release-v3/PHOENIX-2014-T/annotations/manual"
-)
+BASE_CSV_DIR = os.path.expanduser("~/scratch/PHOENIX-2014-T-release-v3/PHOENIX-2014-T/annotations/manual")
 
 OUTPUT_DIR = ".."
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -51,17 +50,20 @@ SPLITS = {
 # LOAD GLOSS ANNOTATIONS
 # =========================
 
+
 def load_gloss_map(csv_path):
     gloss_map = {}
-    with open(csv_path, "r", encoding="utf-8") as f:
+    with open(csv_path, encoding="utf-8") as f:
         reader = csv.DictReader(f, delimiter="|")
         for row in reader:
             gloss_map[row["name"]] = row["orth"].split()
     return gloss_map
 
+
 # =========================
 # BUILD DATASET
 # =========================
+
 
 def build_dataset(pt_dir, gloss_map, skip_files=None):
     dataset = []
@@ -93,15 +95,18 @@ def build_dataset(pt_dir, gloss_map, skip_files=None):
 
     return dataset
 
+
 # =========================
 # SAVE JSONL
 # =========================
+
 
 def save_jsonl(data, path):
     with open(path, "w", encoding="utf-8") as f:
         for row in data:
             json.dump(row, f, ensure_ascii=False)
             f.write("\n")
+
 
 # =========================
 # MAIN
